@@ -1,20 +1,27 @@
 import { useEffect, useRef } from "react";
 import type { CommitRow, Edge } from "../../types";
 
-const ROW_HEIGHT = 24;
-const LANE_WIDTH = 16;
-const DOT_RADIUS = 4;
+export const ROW_HEIGHT = 30;
+const LANE_WIDTH = 22;
+const DOT_RADIUS = 5;
+const LINE_WIDTH = 2;
 
 const COLORS = [
-  "#4a9eff", // blue
-  "#ff6b6b", // red
-  "#51cf66", // green
-  "#ffd43b", // yellow
-  "#cc5de8", // purple
-  "#ff922b", // orange
-  "#20c997", // teal
-  "#f783ac", // pink
+  "#a370f0",
+  "#3fb950",
+  "#f78166",
+  "#58a6ff",
+  "#d2a8ff",
+  "#ffa657",
+  "#79c0ff",
+  "#56d364",
+  "#ff7b72",
+  "#e3b341",
 ];
+
+function laneColor(index: number): string {
+  return COLORS[index % COLORS.length];
+}
 
 interface GraphCanvasProps {
   rows: CommitRow[];
@@ -43,26 +50,61 @@ export function GraphCanvas({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    for (let i = visibleStart; i < Math.min(visibleEnd, rows.length); i++) {
-      const row = rows[i];
-      const y = i * ROW_HEIGHT + ROW_HEIGHT / 2;
+    const drawStart = Math.max(0, visibleStart - 1);
+    const drawEnd = Math.min(rows.length, visibleEnd + 1);
 
-      // Draw edges originating from this row.
-      for (const edge of row.edges) {
-        drawEdge(ctx, edge, y, row.lane, i, rows);
+    // Phase 1: Draw all edges first so dots sit on top.
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    for (let i = drawStart; i < drawEnd; i++) {
+      const row = rows[i];
+      const fromY = i * ROW_HEIGHT + ROW_HEIGHT / 2;
+      const toY = (i + 1) * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+      // Own-lane continuation (straight down to first parent), unless this
+      // commit emits a Merge edge from its own lane (converging elsewhere).
+      const ownMerge = row.edges.find(
+        (e) => e.kind === "merge" && e.from_lane === row.lane
+      );
+      if (!ownMerge && row.parents.length > 0) {
+        const x = row.lane * LANE_WIDTH + LANE_WIDTH / 2;
+        ctx.strokeStyle = laneColor(row.lane_color);
+        ctx.lineWidth = LINE_WIDTH;
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.moveTo(x, fromY);
+        ctx.lineTo(x, toY);
+        ctx.stroke();
       }
 
-      // Draw commit dot.
+      for (const edge of row.edges) {
+        drawEdge(ctx, edge, fromY, toY);
+      }
+    }
+
+    // Phase 2: Draw commit dots on top of all edges.
+    ctx.shadowBlur = 0;
+    for (let i = drawStart; i < drawEnd; i++) {
+      const row = rows[i];
       const x = row.lane * LANE_WIDTH + LANE_WIDTH / 2;
-      const color = COLORS[row.edges.find(e => e.from_lane === row.lane)?.color_index ?? (row.lane % COLORS.length)];
+      const y = i * ROW_HEIGHT + ROW_HEIGHT / 2;
+      const color = laneColor(row.lane_color);
+      const isSelected = row.oid === selectedOid;
+
+      ctx.shadowColor = color;
+      ctx.shadowBlur = isSelected ? 12 : 6;
+
       ctx.beginPath();
       ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
-      ctx.fillStyle = selectedOid === row.oid ? "#ffffff" : color;
+      ctx.fillStyle = isSelected ? "#ffffff" : color;
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.fill();
       ctx.stroke();
     }
+
+    ctx.shadowBlur = 0;
   }, [rows, visibleStart, visibleEnd, maxLane, selectedOid]);
 
   return (
@@ -79,27 +121,31 @@ function drawEdge(
   ctx: CanvasRenderingContext2D,
   edge: Edge,
   fromY: number,
-  _commitLane: number,
-  rowIndex: number,
-  _rows: CommitRow[]
+  toY: number,
 ) {
-  const toY = (rowIndex + 1) * ROW_HEIGHT + ROW_HEIGHT / 2;
   const fromX = edge.from_lane * LANE_WIDTH + LANE_WIDTH / 2;
   const toX = edge.to_lane * LANE_WIDTH + LANE_WIDTH / 2;
-  const color = COLORS[edge.color_index % COLORS.length];
+  const color = laneColor(edge.color_index);
 
   ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = LINE_WIDTH;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 3;
   ctx.beginPath();
 
-  if (edge.kind === "straight" || fromX === toX) {
+  if (fromX === toX) {
     ctx.moveTo(fromX, fromY);
     ctx.lineTo(toX, toY);
   } else {
-    // Bezier curve for fork/merge lines.
+    // S-curve: control points bend toward destination at midpoint.
     ctx.moveTo(fromX, fromY);
-    ctx.bezierCurveTo(fromX, fromY + ROW_HEIGHT * 0.6, toX, toY - ROW_HEIGHT * 0.6, toX, toY);
+    ctx.bezierCurveTo(
+      fromX, fromY + ROW_HEIGHT * 0.5,
+      toX, toY - ROW_HEIGHT * 0.5,
+      toX, toY,
+    );
   }
 
   ctx.stroke();
+  ctx.shadowBlur = 0;
 }

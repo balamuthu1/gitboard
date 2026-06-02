@@ -1,7 +1,6 @@
 import type { CommitRow as CommitRowData } from "../../types";
 import { RefBadge } from "./RefBadge";
-
-const ROW_HEIGHT = 24;
+import { ROW_HEIGHT } from "./GraphCanvas";
 
 interface CommitRowProps {
   row: CommitRowData;

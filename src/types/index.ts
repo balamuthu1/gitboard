@@ -96,6 +96,7 @@ export interface CommitRow {
   refs: RefLabel[];
   parents: string[];
   lane: number;
+  lane_color: number;
   edges: Edge[];
 }
 

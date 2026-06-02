@@ -4,11 +4,10 @@ import { useRepoStore } from "../../store/repoStore";
 import { useBranchStore } from "../../store/branchStore";
 import { useRepoWatcher } from "../../hooks/useRepoWatcher";
 import { useVirtualList } from "../../hooks/useVirtualList";
-import { GraphCanvas } from "./GraphCanvas";
+import { GraphCanvas, ROW_HEIGHT } from "./GraphCanvas";
 import { CommitRowItem } from "./CommitRow";
 
-const ROW_HEIGHT = 24;
-const LANE_WIDTH = 16;
+const LANE_WIDTH = 22;
 
 export function CommitGraph() {
   const { rows, selectedOid, isLoading, loadGraph, selectCommit } = useGraphStore();
