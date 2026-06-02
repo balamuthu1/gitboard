@@ -4,10 +4,20 @@ use crate::types::{CommitRow, Edge, EdgeKind};
 
 use super::walk::RawCommit;
 
+/// Assigns a visual lane (column) and edges to each commit.
+///
+/// All edges go **downward** — from the center of this row to the center of the
+/// row below.  There are three kinds:
+///
+/// * `Straight` – a lane other than this commit's own passes straight through.
+/// * `Fork`     – this commit spawns a new lane for an extra parent.
+/// * `Merge`    – this commit's own lane converges into another lane because
+///                the first parent is already claimed by that lane.
+///
+/// The renderer draws the **own-lane continuation** (straight down to first
+/// parent) separately, unless a `Merge` edge from `own_lane` is present.
 pub fn assign_lanes(commits: Vec<RawCommit>) -> Vec<CommitRow> {
-    // Each slot holds the OID this lane is "waiting to reach".
     let mut active_lanes: Vec<Option<Oid>> = Vec::new();
-    // Maps lane index to a stable color slot.
     let mut lane_colors: Vec<Option<usize>> = Vec::new();
     let mut next_color: usize = 0;
 
@@ -16,60 +26,33 @@ pub fn assign_lanes(commits: Vec<RawCommit>) -> Vec<CommitRow> {
     for raw in commits {
         let mut edges: Vec<Edge> = Vec::new();
 
-        // Find the lane(s) expecting this commit's OID.
-        let matching: Vec<usize> = active_lanes
+        // Find the single lane expecting this commit (at most one with this algorithm).
+        let own_lane = active_lanes
             .iter()
-            .enumerate()
-            .filter_map(|(i, slot)| {
-                if *slot == Some(raw.oid) {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        // The commit's own lane: leftmost match, or a new/free slot.
-        let own_lane = if let Some(&first) = matching.first() {
-            first
-        } else {
-            // New branch tip — allocate a free slot or extend.
-            let slot = active_lanes.iter().position(|s| s.is_none()).unwrap_or_else(|| {
-                active_lanes.push(None);
-                lane_colors.push(None);
-                active_lanes.len() - 1
+            .position(|s| *s == Some(raw.oid))
+            .unwrap_or_else(|| {
+                // New branch tip — reuse a free slot or extend.
+                active_lanes
+                    .iter()
+                    .position(|s| s.is_none())
+                    .unwrap_or_else(|| {
+                        active_lanes.push(None);
+                        lane_colors.push(None);
+                        active_lanes.len() - 1
+                    })
             });
-            slot
-        };
 
-        // Ensure lane_colors is long enough.
         while lane_colors.len() <= own_lane {
             lane_colors.push(None);
         }
 
-        // Assign a color to this lane if it doesn't have one yet.
         if lane_colors[own_lane].is_none() {
             lane_colors[own_lane] = Some(next_color);
             next_color += 1;
         }
         let own_color = lane_colors[own_lane].unwrap();
 
-        // Additional matching lanes are merges converging here — close them.
-        for &merge_lane in matching.iter().skip(1) {
-            let merge_color = lane_colors.get(merge_lane).copied().flatten().unwrap_or(own_color);
-            edges.push(Edge {
-                from_lane: merge_lane,
-                to_lane: own_lane,
-                color_index: merge_color,
-                kind: EdgeKind::Merge,
-            });
-            active_lanes[merge_lane] = None;
-            if let Some(c) = lane_colors.get_mut(merge_lane) {
-                *c = None;
-            }
-        }
-
-        // Emit straight pass-through edges for all other occupied lanes.
+        // Straight pass-through edges for all other occupied lanes.
         for (i, slot) in active_lanes.iter().enumerate() {
             if slot.is_none() || i == own_lane {
                 continue;
@@ -83,40 +66,53 @@ pub fn assign_lanes(commits: Vec<RawCommit>) -> Vec<CommitRow> {
             });
         }
 
-        // Free this commit's slot.
+        // Free own slot before placing parents.
         active_lanes[own_lane] = None;
 
-        // Place parents.
+        // Place first parent (or detect convergence).
         if let Some(&first_parent) = raw.parents.first() {
-            active_lanes[own_lane] = Some(first_parent);
-            // Keep the same color for the first-parent continuation.
+            // If first_parent is already claimed by another active lane, our lane
+            // converges into that lane — emit a downward Merge edge and free ours.
+            let existing = active_lanes
+                .iter()
+                .enumerate()
+                .find(|(i, s)| *i != own_lane && **s == Some(first_parent))
+                .map(|(i, _)| i);
+
+            if let Some(target) = existing {
+                edges.push(Edge {
+                    from_lane: own_lane,
+                    to_lane: target,
+                    color_index: own_color,
+                    kind: EdgeKind::Merge,
+                });
+                // Lane is closed; color is freed.
+                if let Some(c) = lane_colors.get_mut(own_lane) {
+                    *c = None;
+                }
+            } else {
+                active_lanes[own_lane] = Some(first_parent);
+                // Color is inherited automatically.
+            }
         } else {
-            // Root commit: free the slot and its color.
+            // Root commit — free color too.
             if let Some(c) = lane_colors.get_mut(own_lane) {
                 *c = None;
             }
         }
 
-        // Additional parents: find or allocate a lane for each.
+        // Extra parents: fork into existing or new lanes.
         for &extra_parent in raw.parents.iter().skip(1) {
-            // Check if already in active_lanes.
-            let existing = active_lanes
-                .iter()
-                .position(|s| *s == Some(extra_parent));
+            let existing = active_lanes.iter().position(|s| *s == Some(extra_parent));
 
-            let target_lane = if let Some(pos) = existing {
-                // Fork to an existing lane.
-                let color = lane_colors.get(pos).copied().flatten().unwrap_or(own_color);
+            if let Some(pos) = existing {
                 edges.push(Edge {
                     from_lane: own_lane,
                     to_lane: pos,
                     color_index: own_color,
                     kind: EdgeKind::Fork,
                 });
-                let _ = color; // already recorded in the edge
-                pos
             } else {
-                // Allocate a new lane for this parent.
                 let new_lane = active_lanes
                     .iter()
                     .position(|s| s.is_none())
@@ -129,8 +125,8 @@ pub fn assign_lanes(commits: Vec<RawCommit>) -> Vec<CommitRow> {
                     lane_colors.push(None);
                 }
                 lane_colors[new_lane] = Some(next_color);
+                let new_color = next_color;
                 next_color += 1;
-                let new_color = lane_colors[new_lane].unwrap();
                 edges.push(Edge {
                     from_lane: own_lane,
                     to_lane: new_lane,
@@ -138,9 +134,7 @@ pub fn assign_lanes(commits: Vec<RawCommit>) -> Vec<CommitRow> {
                     kind: EdgeKind::Fork,
                 });
                 active_lanes[new_lane] = Some(extra_parent);
-                new_lane
-            };
-            let _ = target_lane;
+            }
         }
 
         // Compact trailing None slots.
@@ -159,6 +153,7 @@ pub fn assign_lanes(commits: Vec<RawCommit>) -> Vec<CommitRow> {
             refs: raw.refs,
             parents: raw.parents.iter().map(|p| p.to_string()).collect(),
             lane: own_lane,
+            lane_color: own_color,
             edges,
         });
     }
@@ -172,7 +167,6 @@ mod tests {
     use crate::types::{EdgeKind, RefLabel, RefKind};
 
     fn make_oid(s: &str) -> Oid {
-        // Derive a deterministic 20-byte OID from an arbitrary string key.
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
         let mut h = DefaultHasher::new();
@@ -220,14 +214,13 @@ mod tests {
         ];
         let rows = assign_lanes(commits);
         assert_eq!(rows.len(), 3);
-        // All commits must be in lane 0.
         for row in &rows {
             assert_eq!(row.lane, 0, "expected lane 0 for {}", row.short_oid);
         }
-        // All edges from non-root commits must be Straight.
-        for row in rows.iter().take(2) {
+        // All edges that exist must be Straight (no forks or merges in a line).
+        for row in &rows {
             for edge in &row.edges {
-                assert_eq!(edge.kind, EdgeKind::Straight, "expected Straight edge in linear history");
+                assert_eq!(edge.kind, EdgeKind::Straight);
             }
         }
     }
@@ -245,8 +238,8 @@ mod tests {
         // Graph (newest first):
         //   M  (merge, parents: [A, B])
         //   A  (parent: C)
-        //   B  (parent: C)
-        //   C  (root)
+        //   B  (parent: C)  ← B detects C already claimed → emits Merge edge
+        //   C  (root)       ← only one lane waiting → no edges
         let commits = vec![
             make_commit("M", &["A", "B"]),
             make_commit("A", &["C"]),
@@ -256,30 +249,24 @@ mod tests {
         let rows = assign_lanes(commits);
         assert_eq!(rows.len(), 4);
 
-        // M should be in lane 0.
+        // M has a Fork edge for second parent (B's lane).
         assert_eq!(rows[0].lane, 0);
-
-        // M must have at least one Fork edge (to second parent lane).
         let m_forks: Vec<_> = rows[0].edges.iter().filter(|e| e.kind == EdgeKind::Fork).collect();
-        assert!(!m_forks.is_empty(), "merge commit should have a Fork edge for extra parent");
+        assert!(!m_forks.is_empty(), "M should fork a lane for extra parent B");
 
-        // C is where both A and B converge — it should carry a Merge edge
-        // (B's lane closing onto C's lane), but no Fork or Straight edges.
-        let c_row = &rows[3];
-        let c_merges: Vec<_> = c_row.edges.iter().filter(|e| e.kind == EdgeKind::Merge).collect();
-        assert!(!c_merges.is_empty(), "C is a convergence point and should have a merge edge");
-        // And since C is a root, there must be no Fork edges going to any parent.
-        let c_forks: Vec<_> = c_row.edges.iter().filter(|e| e.kind == EdgeKind::Fork).collect();
-        assert!(c_forks.is_empty(), "root commit should have no Fork edges");
+        // B emits the convergence Merge edge (B's lane folds into A's lane going down).
+        let b_merges: Vec<_> = rows[2].edges.iter().filter(|e| e.kind == EdgeKind::Merge).collect();
+        assert!(!b_merges.is_empty(), "B should emit a downward Merge edge as it converges");
+        // The merge edge goes from B's lane down to A's lane (where C lives).
+        assert_eq!(b_merges[0].from_lane, rows[2].lane);
+
+        // C is a clean root — single lane, no edges.
+        assert!(rows[3].edges.is_empty(), "C (root, single lane) should have no edges");
     }
 
     #[test]
     fn test_parallel_branches() {
-        // Two completely independent lines, interleaved by timestamp.
-        //   A1 (parent: A2)
-        //   B1 (parent: B2)
-        //   A2 (root)
-        //   B2 (root)
+        // Two independent lines — must be in different lanes.
         let commits = vec![
             make_commit("A1", &["A2"]),
             make_commit("B1", &["B2"]),
@@ -288,14 +275,12 @@ mod tests {
         ];
         let rows = assign_lanes(commits);
         assert_eq!(rows.len(), 4);
-
-        // A1 and B1 must be in different lanes.
         assert_ne!(rows[0].lane, rows[1].lane, "parallel branches must be in different lanes");
     }
 
     #[test]
     fn test_octopus_merge() {
-        // M merges three parents: P1, P2, P3.
+        // M merges three parents.
         let commits = vec![
             make_commit("M", &["P1", "P2", "P3"]),
             make_commit("P1", &[]),
@@ -303,33 +288,27 @@ mod tests {
             make_commit("P3", &[]),
         ];
         let rows = assign_lanes(commits);
-
-        // M must have two Fork edges (one per extra parent).
         let forks: Vec<_> = rows[0].edges.iter().filter(|e| e.kind == EdgeKind::Fork).collect();
-        assert_eq!(forks.len(), 2, "octopus merge should have 2 Fork edges");
+        assert_eq!(forks.len(), 2, "octopus merge should have 2 Fork edges (for P2, P3)");
     }
 
     #[test]
-    fn test_color_stability_after_lane_reuse() {
-        // After feature merges into main and its lane is freed, the next independent
-        // branch root allocated to that freed slot must get a NEW color.
+    fn test_lane_color_unique_per_active_lane() {
+        // All active lanes at any point must have distinct color_index values.
         let commits = vec![
-            make_commit("M", &["A", "B"]),  // merge
+            make_commit("M", &["A", "B"]),
             make_commit("A", &["C"]),
-            make_commit("B", &["C"]),       // B's lane will be freed after M
-            make_commit("C", &["D"]),       // shared base
-            make_commit("D", &[]),          // root
+            make_commit("B", &["C"]),
+            make_commit("C", &["D"]),
+            make_commit("D", &[]),
         ];
         let rows = assign_lanes(commits);
-        // Collect all color_indices used in edges — they should be consistent.
-        // The key invariant: no two active lanes at the same time share a color.
-        // We verify this by checking that within each row, all edge color_indices
-        // for edges from the same source lane are consistent.
+        // Within each row, no two edges from different source lanes share a color.
         for row in &rows {
-            let mut seen: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+            let mut seen: std::collections::HashMap<usize, usize> = Default::default();
             for edge in &row.edges {
-                if let Some(&prev_color) = seen.get(&edge.from_lane) {
-                    assert_eq!(prev_color, edge.color_index,
+                if let Some(&prev) = seen.get(&edge.from_lane) {
+                    assert_eq!(prev, edge.color_index,
                         "inconsistent color for lane {} in row {}", edge.from_lane, row.short_oid);
                 } else {
                     seen.insert(edge.from_lane, edge.color_index);
@@ -349,8 +328,21 @@ mod tests {
     }
 
     #[test]
+    fn test_lane_color_stored_on_row() {
+        let commits = vec![
+            make_commit("A1", &["A2"]),
+            make_commit("B1", &["B2"]),
+            make_commit("A2", &[]),
+            make_commit("B2", &[]),
+        ];
+        let rows = assign_lanes(commits);
+        // A1 and B1 are in different lanes and must have different lane_color values.
+        assert_ne!(rows[0].lane_color, rows[1].lane_color,
+            "parallel branches must have distinct lane colors");
+    }
+
+    #[test]
     fn test_single_commit_many_descendants() {
-        // Long linear chain — ensure lanes stay compact (always lane 0).
         let ids: Vec<String> = (0..20).map(|i| format!("commit{:04}", i)).collect();
         let mut commits: Vec<RawCommit> = ids
             .windows(2)

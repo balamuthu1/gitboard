@@ -141,6 +141,7 @@ pub struct CommitRow {
     pub refs: Vec<RefLabel>,
     pub parents: Vec<String>,
     pub lane: usize,
+    pub lane_color: usize,
     pub edges: Vec<Edge>,
 }
 
