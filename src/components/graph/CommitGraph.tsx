@@ -24,7 +24,7 @@ export function CommitGraph() {
 
   const maxLane = rows.reduce((m, r) => Math.max(m, r.lane), 0);
 
-  const { containerRef, visibleStart, visibleEnd, totalHeight, offsetTop, viewportHeight } =
+  const { containerRef, visibleStart, visibleEnd, totalHeight, viewportHeight, scrollTop } =
     useVirtualList(rows.length, ROW_HEIGHT);
 
   const handleCheckoutCommit = async (oid: string) => {
@@ -73,26 +73,30 @@ export function CommitGraph() {
             visibleStart={visibleStart}
             visibleEnd={visibleEnd}
             viewportHeight={viewportHeight}
+            scrollTop={scrollTop}
             maxLane={maxLane}
             selectedOid={selectedOid}
           />
 
-          {/*
-            Text rows sit beside the graph panel. index=i (not visibleStart+i)
-            because the parent wrapper is already offset by offsetTop.
-          */}
-          <div style={{ position: "absolute", top: offsetTop, left: GRAPH_PANEL_WIDTH, right: 0 }}>
-            {rows.slice(visibleStart, visibleEnd).map((row, i) => (
+          {rows.slice(visibleStart, visibleEnd).map((row, i) => (
+            <div
+              key={row.oid}
+              style={{
+                position: "absolute",
+                top: (visibleStart + i) * ROW_HEIGHT,
+                left: GRAPH_PANEL_WIDTH,
+                right: 0,
+                height: ROW_HEIGHT,
+                overflow: "hidden",
+              }}
+            >
               <CommitRowItem
-                key={row.oid}
                 row={row}
-                index={i}
-                canvasWidth={0}
                 isSelected={row.oid === selectedOid}
                 onClick={() => selectCommit(row.oid === selectedOid ? null : row.oid)}
               />
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

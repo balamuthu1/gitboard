@@ -4,13 +4,11 @@ import { ROW_HEIGHT } from "./GraphCanvas";
 
 interface CommitRowProps {
   row: CommitRowData;
-  index: number;
-  canvasWidth: number;
   isSelected: boolean;
   onClick: () => void;
 }
 
-export function CommitRowItem({ row, index, isSelected, onClick }: Omit<CommitRowProps, "canvasWidth"> & { canvasWidth?: number }) {
+export function CommitRowItem({ row, isSelected, onClick }: CommitRowProps) {
   const date = new Date(row.timestamp * 1000).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -19,7 +17,7 @@ export function CommitRowItem({ row, index, isSelected, onClick }: Omit<CommitRo
   return (
     <div
       className={`commit-row-item${isSelected ? " selected" : ""}`}
-      style={{ top: index * ROW_HEIGHT, left: 0, height: ROW_HEIGHT }}
+      style={{ height: ROW_HEIGHT }}
       onClick={onClick}
     >
       <span className="commit-summary">{row.summary}</span>

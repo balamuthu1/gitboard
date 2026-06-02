@@ -29,6 +29,7 @@ interface GraphCanvasProps {
   visibleStart: number;
   visibleEnd: number;
   viewportHeight: number;
+  scrollTop: number;
   maxLane: number;
   selectedOid: string | null;
 }
@@ -38,11 +39,11 @@ export function GraphCanvas({
   visibleStart,
   visibleEnd,
   viewportHeight,
+  scrollTop,
   maxLane,
   selectedOid,
 }: GraphCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // Canvas is only as tall as the visible viewport — no browser size limit issues.
   const width = Math.max(GRAPH_PANEL_WIDTH, (maxLane + 2) * LANE_WIDTH);
   const height = Math.max(viewportHeight, 1);
 
@@ -54,7 +55,7 @@ export function GraphCanvas({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw a couple of rows beyond visible range so edge lines don't
+    // Draw 2 extra rows above/below the visible range so edge lines don't
     // abruptly terminate at the viewport boundary.
     const drawStart = Math.max(0, visibleStart - 2);
     const drawEnd = Math.min(rows.length, visibleEnd + 2);
@@ -62,14 +63,17 @@ export function GraphCanvas({
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Phase 1: All edges first, so dots paint on top.
+    // Phase 1: All edges first so dots sit on top.
     for (let i = drawStart; i < drawEnd; i++) {
       const row = rows[i];
-      // Y coordinates are relative to the viewport (canvas top = scroll top).
-      const fromY = (i - visibleStart) * ROW_HEIGHT + ROW_HEIGHT / 2;
+      // Y is viewport-relative: absolute row position minus scroll offset.
+      // This formula is correct regardless of overscan since it uses scrollTop
+      // directly rather than visibleStart (which lags by the overscan amount).
+      const fromY = i * ROW_HEIGHT + ROW_HEIGHT / 2 - scrollTop;
       const toY = fromY + ROW_HEIGHT;
 
-      // Own-lane straight continuation unless a Merge edge takes it elsewhere.
+      // Own-lane straight continuation — suppressed only when a Merge edge
+      // takes this lane to a different column.
       const ownMerge = row.edges.find(
         (e) => e.kind === "merge" && e.from_lane === row.lane
       );
@@ -94,7 +98,7 @@ export function GraphCanvas({
     for (let i = drawStart; i < drawEnd; i++) {
       const row = rows[i];
       const x = row.lane * LANE_WIDTH + LANE_WIDTH / 2;
-      const y = (i - visibleStart) * ROW_HEIGHT + ROW_HEIGHT / 2;
+      const y = i * ROW_HEIGHT + ROW_HEIGHT / 2 - scrollTop;
       const color = laneColor(row.lane_color);
       const isSelected = row.oid === selectedOid;
 
@@ -111,11 +115,12 @@ export function GraphCanvas({
     }
 
     ctx.shadowBlur = 0;
-  }, [rows, visibleStart, visibleEnd, viewportHeight, maxLane, selectedOid]);
+  }, [rows, visibleStart, visibleEnd, viewportHeight, scrollTop, maxLane, selectedOid]);
 
   return (
-    // sticky: canvas stays at the top of the scroll viewport while the text
-    // rows scroll underneath — keeps graph lines always aligned with their rows.
+    // sticky: canvas stays anchored to the top of the scroll viewport while
+    // rows scroll past. Drawing uses scrollTop to compute viewport-relative Y,
+    // so dots always align with their text rows regardless of overscan.
     <canvas
       ref={canvasRef}
       width={width}
@@ -152,6 +157,7 @@ function drawEdge(
     ctx.moveTo(fromX, fromY);
     ctx.lineTo(toX, toY);
   } else {
+    // S-curve: control points bend toward destination at row midpoint.
     ctx.moveTo(fromX, fromY);
     ctx.bezierCurveTo(
       fromX, fromY + ROW_HEIGHT * 0.5,
