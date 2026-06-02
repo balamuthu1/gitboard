@@ -10,7 +10,7 @@ interface CommitRowProps {
   onClick: () => void;
 }
 
-export function CommitRowItem({ row, index, canvasWidth, isSelected, onClick }: CommitRowProps) {
+export function CommitRowItem({ row, index, isSelected, onClick }: Omit<CommitRowProps, "canvasWidth"> & { canvasWidth?: number }) {
   const date = new Date(row.timestamp * 1000).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -19,7 +19,7 @@ export function CommitRowItem({ row, index, canvasWidth, isSelected, onClick }: 
   return (
     <div
       className={`commit-row-item${isSelected ? " selected" : ""}`}
-      style={{ top: index * ROW_HEIGHT, left: canvasWidth, height: ROW_HEIGHT }}
+      style={{ top: index * ROW_HEIGHT, left: 0, height: ROW_HEIGHT }}
       onClick={onClick}
     >
       <span className="commit-summary">{row.summary}</span>

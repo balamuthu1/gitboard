@@ -6,6 +6,7 @@ interface VirtualListResult {
   visibleEnd: number;
   totalHeight: number;
   offsetTop: number;
+  viewportHeight: number;
 }
 
 export function useVirtualList(
@@ -43,5 +44,5 @@ export function useVirtualList(
   );
   const offsetTop = visibleStart * itemHeight;
 
-  return { containerRef, visibleStart, visibleEnd, totalHeight, offsetTop };
+  return { containerRef, visibleStart, visibleEnd, totalHeight, offsetTop, viewportHeight: containerHeight };
 }

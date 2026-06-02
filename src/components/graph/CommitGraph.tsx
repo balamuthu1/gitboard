@@ -4,10 +4,8 @@ import { useRepoStore } from "../../store/repoStore";
 import { useBranchStore } from "../../store/branchStore";
 import { useRepoWatcher } from "../../hooks/useRepoWatcher";
 import { useVirtualList } from "../../hooks/useVirtualList";
-import { GraphCanvas, ROW_HEIGHT } from "./GraphCanvas";
+import { GraphCanvas, ROW_HEIGHT, GRAPH_PANEL_WIDTH } from "./GraphCanvas";
 import { CommitRowItem } from "./CommitRow";
-
-const LANE_WIDTH = 22;
 
 export function CommitGraph() {
   const { rows, selectedOid, isLoading, loadGraph, selectCommit } = useGraphStore();
@@ -25,9 +23,8 @@ export function CommitGraph() {
   }, [repoInfo, loadGraph]);
 
   const maxLane = rows.reduce((m, r) => Math.max(m, r.lane), 0);
-  const canvasWidth = (maxLane + 1) * LANE_WIDTH + LANE_WIDTH;
 
-  const { containerRef, visibleStart, visibleEnd, totalHeight, offsetTop } =
+  const { containerRef, visibleStart, visibleEnd, totalHeight, offsetTop, viewportHeight } =
     useVirtualList(rows.length, ROW_HEIGHT);
 
   const handleCheckoutCommit = async (oid: string) => {
@@ -63,35 +60,41 @@ export function CommitGraph() {
           <button onClick={() => selectCommit(null)}>✕</button>
         </div>
       )}
-    <div className="commit-graph" ref={containerRef} style={{ overflow: "auto", position: "relative" }}>
-      {/* Full-height spacer so the scrollbar reflects all commits. */}
-      <div style={{ height: totalHeight, position: "relative" }}>
-        {/* Canvas for graph lines and dots — covers full graph height. */}
-        <div style={{ position: "absolute", top: 0, left: 0 }}>
+      <div className="commit-graph" ref={containerRef} style={{ overflow: "auto", position: "relative" }}>
+        {/* Full-height spacer gives the scrollbar correct proportions. */}
+        <div style={{ height: totalHeight, position: "relative" }}>
+          {/*
+            The canvas is sticky so it stays anchored to the top of the
+            viewport while the content scrolls. It's only as tall as the
+            viewport, avoiding the WebKit canvas-height limit.
+          */}
           <GraphCanvas
             rows={rows}
             visibleStart={visibleStart}
             visibleEnd={visibleEnd}
+            viewportHeight={viewportHeight}
             maxLane={maxLane}
             selectedOid={selectedOid}
           />
-        </div>
 
-        {/* Text rows — only render visible range. */}
-        <div style={{ position: "absolute", top: offsetTop, left: canvasWidth, right: 0 }}>
-          {rows.slice(visibleStart, visibleEnd).map((row, i) => (
-            <CommitRowItem
-              key={row.oid}
-              row={row}
-              index={visibleStart + i}
-              canvasWidth={0}
-              isSelected={row.oid === selectedOid}
-              onClick={() => selectCommit(row.oid === selectedOid ? null : row.oid)}
-            />
-          ))}
+          {/*
+            Text rows sit beside the graph panel. index=i (not visibleStart+i)
+            because the parent wrapper is already offset by offsetTop.
+          */}
+          <div style={{ position: "absolute", top: offsetTop, left: GRAPH_PANEL_WIDTH, right: 0 }}>
+            {rows.slice(visibleStart, visibleEnd).map((row, i) => (
+              <CommitRowItem
+                key={row.oid}
+                row={row}
+                index={i}
+                canvasWidth={0}
+                isSelected={row.oid === selectedOid}
+                onClick={() => selectCommit(row.oid === selectedOid ? null : row.oid)}
+              />
+            ))}
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }
