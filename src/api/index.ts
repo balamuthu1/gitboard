@@ -1,3 +1,4 @@
+export * from "./branches";
 export * from "./commit";
 export * from "./diff";
 export * from "./graph";

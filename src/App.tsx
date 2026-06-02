@@ -1,4 +1,5 @@
 import { Toolbar } from "./components/layout/Toolbar";
+import { Sidebar } from "./components/layout/Sidebar";
 import { StatusBar } from "./components/layout/StatusBar";
 import { CommitGraph } from "./components/graph/CommitGraph";
 import { StagingPanel } from "./components/status/StagingPanel";
@@ -14,7 +15,10 @@ function App() {
     <div className="app">
       <Toolbar />
       <div className="app-body">
-        {/* Left: commit graph */}
+        {/* Branch sidebar */}
+        {repoInfo && <Sidebar />}
+
+        {/* Centre: commit graph */}
         <div className="pane pane-graph">
           <CommitGraph />
         </div>

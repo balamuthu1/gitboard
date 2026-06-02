@@ -82,6 +82,20 @@ pub struct CommitSummary {
     pub timestamp: i64,
 }
 
+// ---- Branches ----
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BranchInfo {
+    pub name: String,
+    pub is_head: bool,
+    pub is_remote: bool,
+    pub upstream: Option<String>,
+    pub ahead: usize,
+    pub behind: usize,
+    pub head_oid: Option<String>,
+    pub head_summary: Option<String>,
+}
+
 // ---- Graph ----
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

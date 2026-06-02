@@ -66,6 +66,69 @@ body,
 .pane-graph { flex: 1; min-width: 0; }
 .pane-right { width: 360px; flex-shrink: 0; border-left: 1px solid var(--border); overflow-y: auto; }
 
+/* ---- Sidebar ---- */
+.sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-section { margin-bottom: 4px; }
+
+.sidebar-section-title {
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface2);
+}
+
+.branch-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.branch-clickable { cursor: pointer; }
+.branch-clickable:hover { background: var(--surface2); }
+
+.branch-head { color: var(--accent); font-weight: 600; }
+
+.branch-icon { flex-shrink: 0; font-size: 8px; }
+.branch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.branch-oid { font-family: monospace; font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+
+.branch-sync { display: flex; gap: 3px; flex-shrink: 0; font-size: 10px; }
+.ahead { color: var(--add); }
+.behind { color: var(--remove); }
+
+.sidebar-error { padding: 6px 8px; color: var(--remove); font-size: 11px; }
+
+/* ---- Graph commit action bar ---- */
+.commit-graph-wrapper { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+.graph-commit-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.graph-commit-bar-oid { font-family: monospace; color: var(--accent); }
+.graph-commit-bar-summary { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+
 .status-bar {
   display: flex;
   gap: 12px;

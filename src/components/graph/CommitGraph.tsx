@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useGraphStore } from "../../store/graphStore";
 import { useRepoStore } from "../../store/repoStore";
+import { useBranchStore } from "../../store/branchStore";
 import { useRepoWatcher } from "../../hooks/useRepoWatcher";
 import { useVirtualList } from "../../hooks/useVirtualList";
 import { GraphCanvas } from "./GraphCanvas";
@@ -11,7 +12,8 @@ const LANE_WIDTH = 16;
 
 export function CommitGraph() {
   const { rows, selectedOid, isLoading, loadGraph, selectCommit } = useGraphStore();
-  const { repoInfo } = useRepoStore();
+  const { repoInfo, refreshStatus } = useRepoStore();
+  const { checkoutDetached, loadBranches } = useBranchStore();
 
   const onRepoChanged = useCallback(() => {
     loadGraph();
@@ -29,6 +31,13 @@ export function CommitGraph() {
   const { containerRef, visibleStart, visibleEnd, totalHeight, offsetTop } =
     useVirtualList(rows.length, ROW_HEIGHT);
 
+  const handleCheckoutCommit = async (oid: string) => {
+    await checkoutDetached(oid);
+    await refreshStatus();
+    await loadGraph();
+    await loadBranches();
+  };
+
   if (!repoInfo) {
     return (
       <div className="graph-empty">
@@ -41,7 +50,20 @@ export function CommitGraph() {
     return <div className="graph-loading">Loading graph…</div>;
   }
 
+  const selectedRow = selectedOid ? rows.find((r) => r.oid === selectedOid) : null;
+
   return (
+    <div className="commit-graph-wrapper">
+      {selectedRow && (
+        <div className="graph-commit-bar">
+          <span className="graph-commit-bar-oid">{selectedRow.short_oid}</span>
+          <span className="graph-commit-bar-summary">{selectedRow.summary}</span>
+          <button onClick={() => handleCheckoutCommit(selectedRow.oid)}>
+            Checkout (detached)
+          </button>
+          <button onClick={() => selectCommit(null)}>✕</button>
+        </div>
+      )}
     <div className="commit-graph" ref={containerRef} style={{ overflow: "auto", position: "relative" }}>
       {/* Full-height spacer so the scrollbar reflects all commits. */}
       <div style={{ height: totalHeight, position: "relative" }}>
@@ -70,6 +92,7 @@ export function CommitGraph() {
           ))}
         </div>
       </div>
+    </div>
     </div>
   );
 }

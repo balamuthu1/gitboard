@@ -7,6 +7,17 @@ export interface RepoInfo {
   is_bare: boolean;
 }
 
+export interface BranchInfo {
+  name: string;
+  is_head: boolean;
+  is_remote: boolean;
+  upstream: string | null;
+  ahead: number;
+  behind: number;
+  head_oid: string | null;
+  head_summary: string | null;
+}
+
 export type FileStatus =
   | "unmodified"
   | "added"
