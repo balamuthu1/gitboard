@@ -1,0 +1,229 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #1a1a2e;
+  --bg2: #16213e;
+  --bg3: #0f3460;
+  --surface: #1e293b;
+  --surface2: #273548;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --accent: #4a9eff;
+  --add: #22c55e;
+  --remove: #ef4444;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.toolbar-brand {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  margin-right: 12px;
+}
+
+.toolbar-actions { display: flex; gap: 6px; align-items: center; }
+
+.toolbar-path {
+  color: var(--text-muted);
+  padding: 2px 8px;
+  background: var(--surface);
+  border-radius: 4px;
+}
+
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+.pane { display: flex; flex-direction: column; overflow: hidden; }
+.pane-graph { flex: 1; min-width: 0; }
+.pane-right { width: 360px; flex-shrink: 0; border-left: 1px solid var(--border); overflow-y: auto; }
+
+.status-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 3px 12px;
+  background: var(--bg3);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.status-bar .branch { color: var(--accent); }
+.status-bar .staged { color: var(--add); }
+.status-bar .unstaged { color: var(--remove); }
+
+button {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover { background: var(--bg3); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog h2 { font-size: 15px; }
+.dialog-row { display: flex; gap: 8px; }
+.dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+input[type="text"] {
+  flex: 1;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: inherit;
+}
+
+.error { color: var(--remove); font-size: 12px; }
+.progress { color: var(--text-muted); font-size: 12px; }
+
+.staging-panel { display: flex; flex-direction: column; gap: 1px; }
+.file-list { border-bottom: 1px solid var(--border); }
+
+.file-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--surface2);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.file-list-body { max-height: 160px; overflow-y: auto; }
+.empty { padding: 8px; color: var(--text-muted); font-size: 11px; }
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.file-row:hover { background: var(--surface2); }
+
+.file-status { width: 14px; text-align: center; font-weight: 700; font-size: 11px; }
+.status-added { color: var(--add); }
+.status-modified { color: #f59e0b; }
+.status-deleted { color: var(--remove); }
+.status-renamed { color: #a78bfa; }
+.status-untracked { color: var(--text-muted); }
+.status-conflicted { color: var(--remove); }
+
+.file-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-actions { display: flex; gap: 2px; }
+.file-actions button { padding: 0 6px; font-size: 14px; border: none; background: transparent; }
+.file-actions button:hover { background: var(--bg3); }
+
+.diff-viewer { overflow: auto; flex: 1; }
+.diff-viewer.empty, .diff-viewer.loading, .diff-viewer.binary { padding: 12px; color: var(--text-muted); }
+
+.diff-header { padding: 4px 8px; background: var(--surface2); font-weight: 600; border-bottom: 1px solid var(--border); }
+
+.hunk { border-bottom: 1px solid var(--border); }
+.hunk-header { padding: 2px 8px; background: #1e3a5f; color: #7dd3fc; font-size: 11px; }
+
+.diff-line { display: flex; gap: 6px; padding: 0 8px; white-space: pre; }
+.diff-add { background: rgba(34, 197, 94, 0.12); color: #86efac; }
+.diff-remove { background: rgba(239, 68, 68, 0.12); color: #fca5a5; }
+.diff-context { color: var(--text-muted); }
+
+.lineno { width: 36px; text-align: right; color: var(--text-muted); flex-shrink: 0; user-select: none; }
+.diff-prefix { width: 14px; flex-shrink: 0; }
+
+.commit-form { padding: 8px; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); }
+
+textarea {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.commit-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.commit-graph { flex: 1; overflow: auto; position: relative; }
+.graph-empty, .graph-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); }
+
+.commit-row-item {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  cursor: pointer;
+  right: 0;
+}
+
+.commit-row-item:hover { background: var(--surface2); }
+.commit-row-item.selected { background: var(--bg3); }
+
+.commit-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.commit-author { color: var(--text-muted); flex-shrink: 0; }
+.commit-date { color: var(--text-muted); flex-shrink: 0; font-size: 11px; }
+.commit-oid { color: var(--accent); flex-shrink: 0; font-size: 11px; font-family: monospace; }
+.commit-refs { display: flex; gap: 3px; flex-shrink: 0; }
+
+.ref-badge { padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; }

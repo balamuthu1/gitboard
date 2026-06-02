@@ -1,0 +1,30 @@
+[package]
+name = "gitboard"
+version = "0.1.0"
+description = "A native Git client built with Tauri and Rust"
+authors = []
+edition = "2021"
+
+[lib]
+name = "gitboard_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-log = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+git2 = { version = "0.19", features = ["https", "ssh"] }
+notify = { version = "6", features = ["serde"] }
+tokio = { version = "1", features = ["full"] }
+thiserror = "1"
+log = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
