@@ -290,3 +290,102 @@ textarea {
 .commit-refs { display: flex; gap: 3px; flex-shrink: 0; }
 
 .ref-badge { padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; }
+
+/* ---- Toolbar remote ops ---- */
+.toolbar-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+.toolbar-remote-btn { padding: 3px 8px; }
+.toolbar-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  max-width: 480px;
+  white-space: pre-wrap;
+  cursor: pointer;
+  z-index: 200;
+}
+.toolbar-toast-ok { background: var(--surface2); border: 1px solid var(--add); color: var(--text); }
+.toolbar-toast-error { background: var(--surface2); border: 1px solid var(--remove); color: var(--remove); }
+
+/* ---- Sidebar create / branch actions ---- */
+.sidebar-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-new-btn {
+  padding: 0 5px;
+  font-size: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.sidebar-new-btn:hover { color: var(--accent); background: transparent; }
+
+.branch-create-form {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.branch-create-form input {
+  flex: 1;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 11px;
+}
+.branch-create-form button { padding: 2px 6px; font-size: 11px; }
+
+.branch-actions {
+  display: none;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.branch-row:hover .branch-actions { display: flex; }
+.branch-action-btn {
+  padding: 0 4px;
+  font-size: 11px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+}
+.branch-action-btn:hover { background: var(--bg3); color: var(--text); }
+.branch-delete-btn:hover { color: var(--remove); }
+
+/* ---- Commit actions bar ---- */
+.commit-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: var(--bg3);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.commit-actions-label {
+  font-family: monospace;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.commit-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.commit-actions-group-label { color: var(--text-muted); font-size: 11px; }
+.commit-actions-group button { padding: 2px 7px; }
+.btn-danger { border-color: var(--remove); color: var(--remove); }
+.btn-danger:hover { background: rgba(239,68,68,0.15); }
+.commit-actions-ok { color: var(--add); font-size: 11px; cursor: pointer; }
+.commit-actions-err { color: var(--remove); font-size: 11px; cursor: pointer; }

@@ -1,6 +1,7 @@
 use git2::{BranchType, Repository};
 
 use super::error::GitError;
+use super::util::run_git;
 use crate::types::BranchInfo;
 
 pub fn list_branches(repo: &Repository) -> Result<Vec<BranchInfo>, GitError> {
@@ -97,4 +98,27 @@ pub fn checkout_commit(repo: &Repository, oid_str: &str) -> Result<(), GitError>
     repo.checkout_tree(obj, None)?;
     repo.set_head_detached(oid)?;
     Ok(())
+}
+
+pub fn create_branch(repo: &Repository, name: &str, from: Option<&str>) -> Result<(), GitError> {
+    let commit = match from {
+        Some(rev) => repo.revparse_single(rev)?.peel_to_commit()?,
+        None => repo.head()?.peel_to_commit()?,
+    };
+    repo.branch(name, &commit, false)?;
+    Ok(())
+}
+
+pub fn delete_branch(repo: &Repository, name: &str) -> Result<(), GitError> {
+    let mut branch = repo.find_branch(name, BranchType::Local)?;
+    branch.delete()?;
+    Ok(())
+}
+
+pub fn merge_branch(path: &str, branch: &str) -> Result<String, GitError> {
+    run_git(path, &["merge", "--no-ff", branch])
+}
+
+pub fn rebase_onto(path: &str, onto: &str) -> Result<String, GitError> {
+    run_git(path, &["rebase", onto])
 }

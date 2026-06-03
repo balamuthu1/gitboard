@@ -18,6 +18,10 @@ pub fn run() {
             commands::branches::list_branches,
             commands::branches::checkout_branch,
             commands::branches::checkout_commit,
+            commands::branches::create_branch,
+            commands::branches::delete_branch,
+            commands::branches::merge_branch,
+            commands::branches::rebase_onto,
             commands::repo::open_repo,
             commands::repo::discover_repo,
             commands::repo::clone_repo,
@@ -31,6 +35,12 @@ pub fn run() {
             commands::commit::create_commit,
             commands::commit::amend_commit,
             commands::graph::get_graph,
+            commands::remote::fetch_all,
+            commands::remote::pull_branch,
+            commands::remote::push_branch,
+            commands::remote::push_set_upstream,
+            commands::reset::reset_to_commit,
+            commands::reset::revert_commit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

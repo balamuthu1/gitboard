@@ -2,6 +2,7 @@ import { Toolbar } from "./components/layout/Toolbar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { StatusBar } from "./components/layout/StatusBar";
 import { CommitGraph } from "./components/graph/CommitGraph";
+import { CommitActions } from "./components/graph/CommitActions";
 import { StagingPanel } from "./components/status/StagingPanel";
 import { DiffViewer } from "./components/diff/DiffViewer";
 import { CommitForm } from "./components/commit/CommitForm";
@@ -18,9 +19,10 @@ function App() {
         {/* Branch sidebar */}
         {repoInfo && <Sidebar />}
 
-        {/* Centre: commit graph */}
+        {/* Centre: commit graph + commit actions bar */}
         <div className="pane pane-graph">
           <CommitGraph />
+          {repoInfo && <CommitActions />}
         </div>
 
         {/* Right: staging + diff + commit */}

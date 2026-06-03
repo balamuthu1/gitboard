@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useBranchStore } from "../../store/branchStore";
 import { useRepoStore } from "../../store/repoStore";
 import { useGraphStore } from "../../store/graphStore";
@@ -7,24 +7,57 @@ import type { BranchInfo } from "../../types";
 
 export function Sidebar() {
   const { repoInfo } = useRepoStore();
-  const { loadBranches, checkout, branches, error } = useBranchStore();
+  const { loadBranches, checkout, create, remove, merge, rebase, branches, error } =
+    useBranchStore();
   const { loadGraph } = useGraphStore();
   const { refreshStatus } = useRepoStore();
+  const [creating, setCreating] = useState(false);
+  const [newBranchName, setNewBranchName] = useState("");
 
   useEffect(() => {
     if (repoInfo) loadBranches();
   }, [repoInfo, loadBranches]);
 
-  // Refresh branch list when .git changes (e.g. after a commit or external checkout).
   useRepoWatcher(() => {
     if (repoInfo) loadBranches();
   });
 
+  const afterOp = async () => {
+    await Promise.all([loadBranches(), loadGraph(), refreshStatus()]);
+  };
+
   const handleCheckout = async (branch: BranchInfo) => {
     if (branch.is_head || branch.is_remote) return;
     await checkout(branch.name);
-    await refreshStatus();
-    await loadGraph();
+    await afterOp();
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newBranchName.trim();
+    if (!name) return;
+    try {
+      await create(name);
+      setNewBranchName("");
+      setCreating(false);
+    } catch {
+      // error shown via branchStore.error
+    }
+  };
+
+  const handleDelete = async (name: string) => {
+    if (!confirm(`Delete branch "${name}"?`)) return;
+    await remove(name);
+  };
+
+  const handleMerge = async (name: string) => {
+    await merge(name);
+    await afterOp();
+  };
+
+  const handleRebase = async (onto: string) => {
+    await rebase(onto);
+    await afterOp();
   };
 
   if (!repoInfo) return <div className="sidebar" />;
@@ -34,38 +67,70 @@ export function Sidebar() {
 
   return (
     <div className="sidebar">
-      <BranchSection
-        title="Local"
-        branches={locals}
-        onCheckout={handleCheckout}
-      />
-      {remotes.length > 0 && (
-        <BranchSection
-          title="Remote"
-          branches={remotes}
-          onCheckout={handleCheckout}
-        />
-      )}
-      {error && <p className="sidebar-error">{error}</p>}
-    </div>
-  );
-}
+      <div className="sidebar-section">
+        <div className="sidebar-section-title">
+          <span>Local</span>
+          <button
+            className="sidebar-new-btn"
+            onClick={() => setCreating((v) => !v)}
+            title="New branch"
+          >
+            +
+          </button>
+        </div>
 
-function BranchSection({
-  title,
-  branches,
-  onCheckout,
-}: {
-  title: string;
-  branches: BranchInfo[];
-  onCheckout: (b: BranchInfo) => void;
-}) {
-  return (
-    <div className="sidebar-section">
-      <div className="sidebar-section-title">{title}</div>
-      {branches.map((b) => (
-        <BranchRow key={b.name} branch={b} onCheckout={onCheckout} />
-      ))}
+        {creating && (
+          <form className="branch-create-form" onSubmit={handleCreate}>
+            <input
+              value={newBranchName}
+              onChange={(e) => setNewBranchName(e.target.value)}
+              placeholder="branch-name"
+              autoFocus
+            />
+            <button type="submit" disabled={!newBranchName.trim()}>
+              Create
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreating(false);
+                setNewBranchName("");
+              }}
+            >
+              ✕
+            </button>
+          </form>
+        )}
+
+        {locals.map((b) => (
+          <BranchRow
+            key={b.name}
+            branch={b}
+            onCheckout={handleCheckout}
+            onDelete={handleDelete}
+            onMerge={handleMerge}
+            onRebase={handleRebase}
+          />
+        ))}
+      </div>
+
+      {remotes.length > 0 && (
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">Remote</div>
+          {remotes.map((b) => (
+            <BranchRow
+              key={b.name}
+              branch={b}
+              onCheckout={handleCheckout}
+              onDelete={handleDelete}
+              onMerge={handleMerge}
+              onRebase={handleRebase}
+            />
+          ))}
+        </div>
+      )}
+
+      {error && <p className="sidebar-error">{error}</p>}
     </div>
   );
 }
@@ -73,11 +138,19 @@ function BranchSection({
 function BranchRow({
   branch,
   onCheckout,
+  onDelete,
+  onMerge,
+  onRebase,
 }: {
   branch: BranchInfo;
   onCheckout: (b: BranchInfo) => void;
+  onDelete: (name: string) => void;
+  onMerge: (name: string) => void;
+  onRebase: (onto: string) => void;
 }) {
   const canCheckout = !branch.is_head && !branch.is_remote;
+  const canDelete = !branch.is_head && !branch.is_remote;
+  const canMergeOrRebase = !branch.is_head;
 
   return (
     <div
@@ -96,6 +169,35 @@ function BranchRow({
       {branch.head_oid && (
         <span className="branch-oid">{branch.head_oid}</span>
       )}
+      <span className="branch-actions">
+        {canMergeOrRebase && (
+          <>
+            <button
+              className="branch-action-btn"
+              title={`Merge ${branch.name} into HEAD`}
+              onClick={(e) => { e.stopPropagation(); onMerge(branch.name); }}
+            >
+              ⤵
+            </button>
+            <button
+              className="branch-action-btn"
+              title={`Rebase HEAD onto ${branch.name}`}
+              onClick={(e) => { e.stopPropagation(); onRebase(branch.name); }}
+            >
+              ↕
+            </button>
+          </>
+        )}
+        {canDelete && (
+          <button
+            className="branch-action-btn branch-delete-btn"
+            title={`Delete ${branch.name}`}
+            onClick={(e) => { e.stopPropagation(); onDelete(branch.name); }}
+          >
+            ✕
+          </button>
+        )}
+      </span>
     </div>
   );
 }

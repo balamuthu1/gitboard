@@ -2,5 +2,8 @@ pub mod branches;
 pub mod commit;
 pub mod diff;
 pub mod error;
+pub mod remote;
 pub mod repo;
+pub mod reset;
 pub mod status;
+pub mod util;
