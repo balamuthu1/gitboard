@@ -2,8 +2,9 @@ import { useEffect, useRef } from "react";
 import type { CommitRow, Edge } from "../../types";
 
 export const ROW_HEIGHT = 30;
-export const GRAPH_PANEL_WIDTH = 200; // fixed width; text columns start here
-const LANE_WIDTH = 22;
+export const LANE_WIDTH = 22;
+export const GRAPH_PANEL_WIDTH = 200; // legacy export kept for compatibility
+
 const DOT_RADIUS = 5;
 const LINE_WIDTH = 2;
 
@@ -32,6 +33,7 @@ interface GraphCanvasProps {
   scrollTop: number;
   maxLane: number;
   selectedOid: string | null;
+  xOffset: number;
 }
 
 export function GraphCanvas({
@@ -42,9 +44,10 @@ export function GraphCanvas({
   scrollTop,
   maxLane,
   selectedOid,
+  xOffset,
 }: GraphCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const width = Math.max(GRAPH_PANEL_WIDTH, (maxLane + 2) * LANE_WIDTH);
+  const width = xOffset + Math.max(80, (maxLane + 2) * LANE_WIDTH);
   const height = Math.max(viewportHeight, 1);
 
   useEffect(() => {
@@ -55,30 +58,23 @@ export function GraphCanvas({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw 2 extra rows above/below the visible range so edge lines don't
-    // abruptly terminate at the viewport boundary.
     const drawStart = Math.max(0, visibleStart - 2);
     const drawEnd = Math.min(rows.length, visibleEnd + 2);
 
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Phase 1: All edges first so dots sit on top.
+    // Phase 1: edges first so dots sit on top
     for (let i = drawStart; i < drawEnd; i++) {
       const row = rows[i];
-      // Y is viewport-relative: absolute row position minus scroll offset.
-      // This formula is correct regardless of overscan since it uses scrollTop
-      // directly rather than visibleStart (which lags by the overscan amount).
       const fromY = i * ROW_HEIGHT + ROW_HEIGHT / 2 - scrollTop;
       const toY = fromY + ROW_HEIGHT;
 
-      // Own-lane straight continuation — suppressed only when a Merge edge
-      // takes this lane to a different column.
       const ownMerge = row.edges.find(
         (e) => e.kind === "merge" && e.from_lane === row.lane
       );
       if (!ownMerge && row.parents.length > 0) {
-        const x = row.lane * LANE_WIDTH + LANE_WIDTH / 2;
+        const x = xOffset + row.lane * LANE_WIDTH + LANE_WIDTH / 2;
         ctx.strokeStyle = laneColor(row.lane_color);
         ctx.lineWidth = LINE_WIDTH;
         ctx.shadowBlur = 0;
@@ -89,15 +85,15 @@ export function GraphCanvas({
       }
 
       for (const edge of row.edges) {
-        drawEdge(ctx, edge, fromY, toY);
+        drawEdge(ctx, edge, fromY, toY, xOffset);
       }
     }
 
-    // Phase 2: Commit dots on top of all edges.
+    // Phase 2: commit dots on top of edges
     ctx.shadowBlur = 0;
     for (let i = drawStart; i < drawEnd; i++) {
       const row = rows[i];
-      const x = row.lane * LANE_WIDTH + LANE_WIDTH / 2;
+      const x = xOffset + row.lane * LANE_WIDTH + LANE_WIDTH / 2;
       const y = i * ROW_HEIGHT + ROW_HEIGHT / 2 - scrollTop;
       const color = laneColor(row.lane_color);
       const isSelected = row.oid === selectedOid;
@@ -115,12 +111,9 @@ export function GraphCanvas({
     }
 
     ctx.shadowBlur = 0;
-  }, [rows, visibleStart, visibleEnd, viewportHeight, scrollTop, maxLane, selectedOid]);
+  }, [rows, visibleStart, visibleEnd, viewportHeight, scrollTop, maxLane, selectedOid, xOffset]);
 
   return (
-    // sticky: canvas stays anchored to the top of the scroll viewport while
-    // rows scroll past. Drawing uses scrollTop to compute viewport-relative Y,
-    // so dots always align with their text rows regardless of overscan.
     <canvas
       ref={canvasRef}
       width={width}
@@ -142,9 +135,10 @@ function drawEdge(
   edge: Edge,
   fromY: number,
   toY: number,
+  xOffset: number,
 ) {
-  const fromX = edge.from_lane * LANE_WIDTH + LANE_WIDTH / 2;
-  const toX = edge.to_lane * LANE_WIDTH + LANE_WIDTH / 2;
+  const fromX = xOffset + edge.from_lane * LANE_WIDTH + LANE_WIDTH / 2;
+  const toX = xOffset + edge.to_lane * LANE_WIDTH + LANE_WIDTH / 2;
   const color = laneColor(edge.color_index);
 
   ctx.strokeStyle = color;
@@ -157,7 +151,6 @@ function drawEdge(
     ctx.moveTo(fromX, fromY);
     ctx.lineTo(toX, toY);
   } else {
-    // S-curve: control points bend toward destination at row midpoint.
     ctx.moveTo(fromX, fromY);
     ctx.bezierCurveTo(
       fromX, fromY + ROW_HEIGHT * 0.5,
