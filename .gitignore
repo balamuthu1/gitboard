@@ -16,6 +16,9 @@ dist-ssr
 src-tauri/target/
 src-tauri/gen/
 
+# Claude Code worktrees / agent scratch space
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
