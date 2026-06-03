@@ -448,7 +448,7 @@ textarea {
 .branch-action-btn:hover { background: var(--bg3); color: var(--text); }
 .branch-delete-btn:hover { color: var(--remove); }
 
-/* ---- Commit actions bar ---- */
+/* ---- Commit actions bar (legacy, kept for reference) ---- */
 .commit-actions-bar {
   display: flex;
   align-items: center;
@@ -475,3 +475,193 @@ textarea {
 .btn-danger:hover { background: rgba(239,68,68,0.15); }
 .commit-actions-ok { color: var(--add); font-size: 11px; cursor: pointer; }
 .commit-actions-err { color: var(--remove); font-size: 11px; cursor: pointer; }
+
+/* ---- Tab bar ---- */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  height: 32px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  height: 100%;
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--text-muted);
+  user-select: none;
+  min-width: 0;
+  max-width: 180px;
+}
+
+.tab:hover { background: var(--surface2); color: var(--text); }
+
+.tab-active {
+  background: var(--bg3);
+  color: var(--text);
+  border-bottom: 2px solid var(--accent);
+}
+
+.tab-icon { flex-shrink: 0; font-size: 11px; }
+
+.tab-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-close {
+  flex-shrink: 0;
+  padding: 0 3px;
+  font-size: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.tab-close:hover { background: rgba(239,68,68,0.2); color: var(--remove); opacity: 1; }
+
+.tab-add {
+  padding: 0 10px;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tab-add:hover { background: var(--surface2); color: var(--accent); }
+
+/* ---- Commit detail panel ---- */
+.commit-detail-panel {
+  flex-shrink: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+  font-size: 12px;
+}
+
+.commit-detail-panel-expanded {
+  /* expanded height is determined by content */
+}
+
+.commit-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.commit-detail-toggle {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.commit-detail-toggle:hover { color: var(--accent); background: transparent; }
+
+.commit-detail-hash {
+  font-family: monospace;
+  color: var(--accent);
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.commit-detail-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.commit-detail-close {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.commit-detail-close:hover { color: var(--remove); background: transparent; }
+
+.commit-detail-body {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.commit-detail-meta {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 3px 10px;
+  font-size: 11px;
+}
+
+.commit-detail-key {
+  color: var(--text-muted);
+  text-align: right;
+  font-weight: 600;
+  align-self: center;
+}
+
+.commit-detail-val {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-detail-val-oid {
+  font-family: monospace;
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.commit-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.commit-detail-actions-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.commit-detail-actions button { padding: 2px 8px; font-size: 11px; }
+
+.commit-detail-ok { color: var(--add); font-size: 11px; cursor: pointer; }
+.commit-detail-err { color: var(--remove); font-size: 11px; cursor: pointer; }

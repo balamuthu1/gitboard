@@ -6,6 +6,7 @@ import { useRepoWatcher } from "../../hooks/useRepoWatcher";
 import { useVirtualList } from "../../hooks/useVirtualList";
 import { GraphCanvas, ROW_HEIGHT } from "./GraphCanvas";
 import { CommitRowItem, type ColWidths } from "./CommitRow";
+import * as api from "../../api";
 
 const MIN_COL = 40;
 
@@ -43,6 +44,10 @@ export function CommitGraph() {
   const { repoInfo, refreshStatus } = useRepoStore();
   const { checkoutDetached, loadBranches } = useBranchStore();
   const [colWidths, setColWidths] = useState<ColWidths>(DEFAULT_COL_WIDTHS);
+  const [detailExpanded, setDetailExpanded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [detailMsg, setDetailMsg] = useState<string | null>(null);
+  const [detailErr, setDetailErr] = useState<string | null>(null);
 
   const onRepoChanged = useCallback(() => {
     loadGraph();
@@ -53,6 +58,11 @@ export function CommitGraph() {
   useEffect(() => {
     if (repoInfo) loadGraph();
   }, [repoInfo, loadGraph]);
+
+  // Auto-expand when a new commit is selected
+  useEffect(() => {
+    if (selectedOid) setDetailExpanded(true);
+  }, [selectedOid]);
 
   const maxLane = rows.reduce((m, r) => Math.max(m, r.lane), 0);
 
@@ -78,28 +88,71 @@ export function CommitGraph() {
     document.addEventListener("mouseup", onUp);
   };
 
-  const handleCheckoutCommit = async (oid: string) => {
-    await checkoutDetached(oid);
-    await refreshStatus();
-    await loadGraph();
-    await loadBranches();
+  const afterOp = async () => {
+    setBusy(false);
+    await Promise.all([loadGraph(), refreshStatus()]);
+    selectCommit(null);
+  };
+
+  const handleReset = async (mode: "soft" | "mixed" | "hard") => {
+    if (!selectedOid) return;
+    const label = selectedOid.slice(0, 7);
+    if (mode === "hard" && !confirm(`Hard reset to ${label}? This discards all uncommitted changes.`))
+      return;
+    setBusy(true);
+    setDetailErr(null);
+    setDetailMsg(null);
+    try {
+      await api.resetToCommit(selectedOid, mode);
+      setDetailMsg(`Reset (${mode}) to ${label}`);
+      await afterOp();
+    } catch (e) {
+      setDetailErr(String(e));
+      setBusy(false);
+    }
+  };
+
+  const handleRevert = async () => {
+    if (!selectedOid) return;
+    setBusy(true);
+    setDetailErr(null);
+    setDetailMsg(null);
+    try {
+      await api.revertCommit(selectedOid);
+      setDetailMsg(`Reverted ${selectedOid.slice(0, 7)} — changes staged, commit to finish`);
+      await afterOp();
+    } catch (e) {
+      setDetailErr(String(e));
+      setBusy(false);
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!selectedOid) return;
+    setBusy(true);
+    setDetailErr(null);
+    setDetailMsg(null);
+    try {
+      await checkoutDetached(selectedOid);
+      await refreshStatus();
+      await loadGraph();
+      await loadBranches();
+      setDetailMsg(`Checked out ${selectedOid.slice(0, 7)} (detached HEAD)`);
+      setBusy(false);
+    } catch (e) {
+      setDetailErr(String(e));
+      setBusy(false);
+    }
   };
 
   const selectedRow = selectedOid ? rows.find((r) => r.oid === selectedOid) : null;
 
+  const formatDate = (ts: number) => {
+    return new Date(ts * 1000).toLocaleString();
+  };
+
   return (
     <div className="commit-graph-wrapper">
-      {selectedRow && (
-        <div className="graph-commit-bar">
-          <span className="graph-commit-bar-oid">{selectedRow.short_oid}</span>
-          <span className="graph-commit-bar-summary">{selectedRow.summary}</span>
-          <button onClick={() => handleCheckoutCommit(selectedRow.oid)}>
-            Checkout (detached)
-          </button>
-          <button onClick={() => selectCommit(null)}>✕</button>
-        </div>
-      )}
-
       {/* Column headers */}
       <div className="graph-col-headers">
         <ColHeader
@@ -172,6 +225,87 @@ export function CommitGraph() {
           </div>
         )}
       </div>
+
+      {/* Collapsible commit detail panel */}
+      {selectedOid && selectedRow && (
+        <div
+          className={`commit-detail-panel${detailExpanded ? " commit-detail-panel-expanded" : ""}`}
+        >
+          <div className="commit-detail-header">
+            <button
+              className="commit-detail-toggle"
+              onClick={() => setDetailExpanded((v) => !v)}
+              title={detailExpanded ? "Collapse" : "Expand"}
+            >
+              {detailExpanded ? "▾" : "▸"}
+            </button>
+            <span className="commit-detail-hash">{selectedRow.short_oid}</span>
+            <span className="commit-detail-title">{selectedRow.summary}</span>
+            <button
+              className="commit-detail-close"
+              onClick={() => { selectCommit(null); setDetailMsg(null); setDetailErr(null); }}
+              title="Deselect commit"
+            >
+              ×
+            </button>
+          </div>
+
+          {detailExpanded && (
+            <div className="commit-detail-body">
+              <div className="commit-detail-meta">
+                <span className="commit-detail-key">Author</span>
+                <span className="commit-detail-val">
+                  {selectedRow.author_name} &lt;{selectedRow.author_email}&gt;
+                </span>
+                <span className="commit-detail-key">Date</span>
+                <span className="commit-detail-val">{formatDate(selectedRow.timestamp)}</span>
+                <span className="commit-detail-key">Commit</span>
+                <span className="commit-detail-val commit-detail-val-oid">{selectedRow.oid}</span>
+                <span className="commit-detail-key">Parents</span>
+                <span className="commit-detail-val commit-detail-val-oid">
+                  {selectedRow.parents.length > 0
+                    ? selectedRow.parents.map((p) => p.slice(0, 7)).join("  ")
+                    : "none"}
+                </span>
+              </div>
+
+              <div className="commit-detail-actions">
+                <span className="commit-detail-actions-label">Reset HEAD to here:</span>
+                <button disabled={busy} onClick={() => handleReset("soft")} title="Keep changes staged">
+                  Soft
+                </button>
+                <button disabled={busy} onClick={() => handleReset("mixed")} title="Keep changes unstaged">
+                  Mixed
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => handleReset("hard")}
+                  className="btn-danger"
+                  title="Discard all changes"
+                >
+                  Hard ⚠
+                </button>
+                <button disabled={busy} onClick={handleRevert} title="Stage the inverse of this commit">
+                  Revert
+                </button>
+                <button disabled={busy} onClick={handleCheckout} title="Check out this commit (detached HEAD)">
+                  Checkout (detached)
+                </button>
+
+                {(detailMsg || detailErr) && (
+                  <span
+                    className={detailErr ? "commit-detail-err" : "commit-detail-ok"}
+                    onClick={() => { setDetailMsg(null); setDetailErr(null); }}
+                    title="Click to dismiss"
+                  >
+                    {detailErr ?? detailMsg}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

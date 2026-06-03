@@ -3,11 +3,13 @@ import { useRepoStore } from "../../store/repoStore";
 import { useBranchStore } from "../../store/branchStore";
 import { useRemoteStore } from "../../store/remoteStore";
 import { useGraphStore } from "../../store/graphStore";
+import { useTabsStore } from "../../store/tabsStore";
 import { OpenRepoDialog } from "../repo/OpenRepoDialog";
 import { CloneRepoDialog } from "../repo/CloneRepoDialog";
 
 export function Toolbar() {
-  const { repoInfo, closeRepo, refreshStatus } = useRepoStore();
+  const { repoInfo, refreshStatus } = useRepoStore();
+  const { activeId, closeTab } = useTabsStore();
   const { branches, loadBranches } = useBranchStore();
   const { fetch, pull, push, isLoading, error, lastOutput, clearError } = useRemoteStore();
   const { loadGraph } = useGraphStore();
@@ -72,7 +74,7 @@ export function Toolbar() {
             </button>
             <span className="toolbar-sep" />
             <span className="toolbar-path">{repoInfo.head_branch ?? "detached"}</span>
-            <button onClick={closeRepo}>Close</button>
+            <button onClick={() => activeId && closeTab(activeId)}>Close</button>
           </>
         )}
       </div>
