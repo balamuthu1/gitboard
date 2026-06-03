@@ -37,28 +37,137 @@ body,
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  height: 44px;
+  padding: 0 8px 0 12px;
   background: var(--bg3);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  gap: 0;
+  overflow: hidden;
 }
 
-.toolbar-brand {
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--accent);
+/* ── Toolbar sections ── */
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
   margin-right: 12px;
 }
 
-.toolbar-actions { display: flex; gap: 6px; align-items: center; }
-
-.toolbar-path {
-  color: var(--text-muted);
-  padding: 2px 8px;
-  background: var(--surface);
-  border-radius: 4px;
+.toolbar-center {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex: 1;
+  justify-content: center;
 }
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+/* ── Brand ── */
+.toolbar-brand {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+/* ── Repo › Branch breadcrumb ── */
+.toolbar-crumb-sep {
+  color: var(--border);
+  font-size: 16px;
+  flex-shrink: 0;
+  margin: 0 2px;
+  line-height: 1;
+}
+
+.toolbar-crumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  cursor: default;
+  max-width: 200px;
+}
+
+.toolbar-crumb-icon { font-size: 11px; flex-shrink: 0; color: var(--text-muted); }
+.toolbar-crumb-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toolbar-crumb-branch { color: var(--accent); }
+.toolbar-crumb-branch .toolbar-crumb-icon { color: var(--accent); }
+
+/* ── Center action buttons (icon + label stacked) ── */
+.tb-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  min-width: 46px;
+  height: 36px;
+  transition: background 0.1s, color 0.1s;
+  font: inherit;
+}
+.tb-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+  border-color: var(--border);
+}
+.tb-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.tb-btn-icon { font-size: 14px; line-height: 1; }
+.tb-btn-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+/* vertical separator between button groups */
+.tb-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ── Right icon buttons (open/close repo) ── */
+.tb-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: background 0.1s, color 0.1s;
+}
+.tb-icon-btn:hover { background: rgba(255,255,255,0.09); color: var(--text); border-color: var(--border); }
+.tb-icon-btn-close:hover { color: var(--remove); }
 
 .app-body { display: flex; flex: 1; overflow: hidden; }
 
@@ -378,8 +487,6 @@ textarea {
 .ref-badge { padding: 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 600; color: #fff; white-space: nowrap; }
 
 /* ---- Toolbar remote ops ---- */
-.toolbar-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
-.toolbar-remote-btn { padding: 3px 8px; }
 .toolbar-toast {
   position: fixed;
   bottom: 32px;
